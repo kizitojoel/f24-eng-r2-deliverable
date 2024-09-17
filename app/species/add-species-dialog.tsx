@@ -90,20 +90,22 @@ const fetchWikipediaSummary = async (topic: string): Promise<WikipediaSummary | 
       },
     });
     if (!response.ok) {
-      return toast({
+      toast({
         title: "Something went wrong.",
         description: "Could not find species that was searched",
         variant: "destructive",
       });
+      return null;
     }
-    const data: WikipediaSummary = await response.json();
+    const data = (await response.json()) as WikipediaSummary;
     return data;
   } catch (error) {
-    return toast({
+    toast({
       title: "Something went wrong.",
       description: "Error fetching data",
       variant: "destructive",
     });
+    return null;
   }
 };
 
@@ -128,11 +130,12 @@ export default function AddSpeciesDialog({ userId }: { userId: string }) {
     const searchName = form.getValues("scientific_name") || form.getValues("common_name");
 
     if (!searchName) {
-      return toast({
+      toast({
         title: "No values entered",
         description: "Please enter a scientific name or a common name to search with Wikipedia",
         variant: "destructive",
       });
+      return null;
     }
     const summary = await fetchWikipediaSummary(searchName);
     if (summary) {
