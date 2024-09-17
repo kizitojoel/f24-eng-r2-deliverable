@@ -74,6 +74,39 @@ const defaultValues: Partial<FormData> = {
   description: null,
 };
 
+interface WikipediaSummary {
+  title: string;
+  extract: string;
+  thumbnail?: {
+    source: string;
+  };
+}
+
+const fetchWikipediaSummary = async (topic: string): Promise<WikipediaSummary | null> => {
+  try {
+    const response = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topic)}`, {
+      headers: {
+        "User-Agent": "Biodiversity Hub/1.0 (joelkizito@college.harvard.edu) Fetch/1.0",
+      },
+    });
+    if (!response.ok) {
+      return toast({
+        title: "Something went wrong.",
+        description: "Could not find species that was searched",
+        variant: "destructive",
+      });
+    }
+    const data: WikipediaSummary = await response.json();
+    return data;
+  } catch (error) {
+    return toast({
+      title: "Something went wrong.",
+      description: "Error fetching data",
+      variant: "destructive",
+    });
+  }
+};
+
 export default function AddSpeciesDialog({ userId }: { userId: string }) {
   const router = useRouter();
 
@@ -86,6 +119,31 @@ export default function AddSpeciesDialog({ userId }: { userId: string }) {
     defaultValues,
     mode: "onChange",
   });
+
+  // Handling the Wikipedia search when the button is triggered
+  const [image, setImage] = useState<string | null>(null);
+  const [description, setDescription] = useState<string | null>(null);
+
+  const handleSearch = async () => {
+    const searchName = form.getValues("scientific_name") || form.getValues("common_name");
+
+    if (!searchName) {
+      return toast({
+        title: "No values entered",
+        description: "Please enter a scientific name or a common name to search with Wikipedia",
+        variant: "destructive",
+      });
+    }
+    const summary = await fetchWikipediaSummary(searchName);
+    if (summary) {
+      setImage(summary.thumbnail?.source ?? null);
+      setDescription(summary.extract || null);
+      form.setValue("image", summary.thumbnail?.source ?? null);
+      form.setValue("description", summary.extract || null);
+    }
+    console.log(image);
+    console.log(description);
+  };
 
   const onSubmit = async (input: FormData) => {
     // The `input` prop contains data that has already been processed by zod. We can now use it in a supabase query
@@ -147,6 +205,15 @@ export default function AddSpeciesDialog({ userId }: { userId: string }) {
         <Form {...form}>
           <form onSubmit={(e: BaseSyntheticEvent) => void form.handleSubmit(onSubmit)(e)}>
             <div className="grid w-full items-center gap-4">
+              <Button
+                type="button"
+                onClick={() => {
+                  void handleSearch();
+                }}
+                className="ml-2"
+              >
+                Search
+              </Button>
               <FormField
                 control={form.control}
                 name="scientific_name"
